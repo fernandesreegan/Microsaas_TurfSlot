@@ -1,0 +1,11 @@
+{% extends "_base.txt" %}
+{% block subject %}Verify your TurfSlot email address{% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+Welcome to TurfSlot! Please confirm your email address by opening the link below:
+
+{{ action_url }}
+
+This link expires in {{ expires_text }}. If you did not create a TurfSlot account, you can ignore this email.
+{% endblock %}

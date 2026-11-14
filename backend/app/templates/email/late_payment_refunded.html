@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>Your payment was refunded</h1>
+<p>Hi {{ recipient_name }},</p>
+<p>Your payment for booking <strong>{{ booking_ref }}</strong> arrived after the slot hold expired, and the slot had already been taken. We could not confirm this booking, so we have automatically refunded <strong>{{ refund_amount or amount }}</strong> in full.</p>
+{% include "_booking_details.html" %}
+<p><a class="button" href="{{ frontend_url }}/turfs">Pick another slot</a></p>
+{% endblock %}

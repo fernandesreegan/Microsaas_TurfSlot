@@ -1,0 +1,10 @@
+{% extends "_base.txt" %}
+{% block subject %}Refund processed for booking {{ booking_ref }}{% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+Your refund of {{ refund_amount or amount }} for booking {{ booking_ref }} has been processed. Depending on your bank it may take a few business days to appear.
+
+{% include "_booking_details.txt" %}
+{% include "_booking_link.txt" %}
+{% endblock %}

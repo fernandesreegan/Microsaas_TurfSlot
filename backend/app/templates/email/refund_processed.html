@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>Refund processed</h1>
+<p>Hi {{ recipient_name }},</p>
+<p>Your refund of <strong>{{ refund_amount or amount }}</strong> for booking <strong>{{ booking_ref }}</strong> has been processed. Depending on your bank it may take a few business days to appear.</p>
+{% include "_booking_details.html" %}
+{% include "_booking_link.html" %}
+{% endblock %}

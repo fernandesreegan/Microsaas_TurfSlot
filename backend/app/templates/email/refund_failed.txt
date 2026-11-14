@@ -1,0 +1,10 @@
+{% extends "_base.txt" %}
+{% block subject %}Problem with your refund for booking {{ booking_ref }}{% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+We could not complete the refund of {{ refund_amount or amount }} for booking {{ booking_ref }}. Our team has been notified and will retry or contact you shortly. You do not need to do anything right now.
+
+{% include "_booking_details.txt" %}
+{% include "_booking_link.txt" %}
+{% endblock %}

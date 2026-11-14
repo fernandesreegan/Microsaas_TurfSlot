@@ -1,0 +1,14 @@
+{% extends "_base.txt" %}
+{% block subject %}{% if is_owner %}New booking {{ booking_ref }} at {{ turf_name }}{% else %}Booking confirmed: {{ turf_name }} ({{ booking_ref }}){% endif %}{% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+{% if is_owner %}
+You have a new confirmed booking at {{ turf_name }}.
+{% else %}
+Your booking is confirmed. See you on the turf!
+{% endif %}
+
+{% include "_booking_details.txt" %}
+{% include "_booking_link.txt" %}
+{% endblock %}

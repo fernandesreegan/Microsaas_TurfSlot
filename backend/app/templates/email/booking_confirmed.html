@@ -1,0 +1,12 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>{% if is_owner %}New booking received{% else %}Booking confirmed{% endif %}</h1>
+<p>Hi {{ recipient_name }},</p>
+{% if is_owner %}
+<p>You have a new confirmed booking at <strong>{{ turf_name }}</strong>.</p>
+{% else %}
+<p>Your booking is confirmed. See you on the turf!</p>
+{% endif %}
+{% include "_booking_details.html" %}
+{% include "_booking_link.html" %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>We hit a problem with your refund</h1>
+<p>Hi {{ recipient_name }},</p>
+<p>We could not complete the refund of <strong>{{ refund_amount or amount }}</strong> for booking <strong>{{ booking_ref }}</strong>. Our team has been notified and will retry or contact you shortly. You do not need to do anything right now.</p>
+{% include "_booking_details.html" %}
+{% include "_booking_link.html" %}
+{% endblock %}

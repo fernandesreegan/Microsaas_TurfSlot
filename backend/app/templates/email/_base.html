@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ subject }}</title>
+<style>
+  body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; }
+  .wrapper { width: 100%; background: #f1f5f9; padding: 24px 0; }
+  .card { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; }
+  .header { background: #059669; color: #ffffff; padding: 20px 28px; font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
+  .content { padding: 28px; font-size: 15px; line-height: 1.6; }
+  .content h1 { font-size: 20px; margin: 0 0 16px; }
+  .button { display: inline-block; background: #059669; color: #ffffff !important; text-decoration: none; padding: 12px 22px; border-radius: 8px; font-weight: 600; }
+  .details { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  .details td.label { color: #64748b; width: 40%; }
+  .muted { color: #64748b; font-size: 13px; }
+  .footer { padding: 16px 28px 24px; color: #94a3b8; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+    <div class="header">TurfSlot</div>
+    <div class="content">
+{% block content %}{% endblock %}
+    </div>
+    <div class="footer">
+      You are receiving this email because you have an account on TurfSlot.<br>
+      &copy; TurfSlot &middot; <a href="{{ frontend_url }}">{{ frontend_url }}</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

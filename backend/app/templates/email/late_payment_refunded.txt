@@ -1,0 +1,10 @@
+{% extends "_base.txt" %}
+{% block subject %}Your payment for {{ turf_name }} was refunded ({{ booking_ref }}){% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+Your payment for booking {{ booking_ref }} arrived after the slot hold expired, and the slot had already been taken. We could not confirm this booking, so we have automatically refunded {{ refund_amount or amount }} in full.
+
+{% include "_booking_details.txt" %}
+Please pick another slot on TurfSlot: {{ frontend_url }}/turfs
+{% endblock %}

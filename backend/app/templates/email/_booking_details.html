@@ -1,0 +1,10 @@
+<table class="details" role="presentation">
+  <tr><td class="label">Booking ref</td><td><strong>{{ booking_ref }}</strong></td></tr>
+  <tr><td class="label">Turf</td><td>{{ turf_name }}{% if turf_address %}<br><span class="muted">{{ turf_address }}</span>{% endif %}</td></tr>
+  <tr><td class="label">Starts</td><td>{{ start_local }}</td></tr>
+  <tr><td class="label">Ends</td><td>{{ end_local }}</td></tr>
+  <tr><td class="label">Amount</td><td>{{ amount }}</td></tr>
+{% if refund_amount %}
+  <tr><td class="label">Refund</td><td>{{ refund_amount }}</td></tr>
+{% endif %}
+</table>

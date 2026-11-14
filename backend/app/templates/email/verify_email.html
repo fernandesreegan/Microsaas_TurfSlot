@@ -1,0 +1,9 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>Verify your email</h1>
+<p>Hi {{ recipient_name }},</p>
+<p>Welcome to TurfSlot! Please confirm your email address to start booking turfs.</p>
+<p><a class="button" href="{{ action_url }}">Verify email</a></p>
+<p class="muted">This link expires in {{ expires_text }}. If the button does not work, paste this URL into your browser:<br>{{ action_url }}</p>
+<p class="muted">If you did not create a TurfSlot account, you can ignore this email.</p>
+{% endblock %}

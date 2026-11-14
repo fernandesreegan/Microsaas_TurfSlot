@@ -1,0 +1,8 @@
+TurfSlot
+========
+
+{% block content %}{% endblock %}
+
+--
+TurfSlot | {{ frontend_url }}
+You are receiving this email because you have an account on TurfSlot.

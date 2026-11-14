@@ -1,0 +1,22 @@
+{% extends "_base.html" %}
+{% block content %}
+<h1>Booking cancelled</h1>
+<p>Hi {{ recipient_name }},</p>
+{% if is_owner %}
+<p>A booking at <strong>{{ turf_name }}</strong> has been cancelled{% if cancelled_by %} by the {{ cancelled_by }}{% endif %}. The slot is available again.</p>
+{% else %}
+<p>Your booking at <strong>{{ turf_name }}</strong> has been cancelled{% if cancelled_by %} by the {{ cancelled_by }}{% endif %}.</p>
+{% endif %}
+{% if reason %}
+<p><strong>Reason:</strong> {{ reason }}</p>
+{% endif %}
+{% include "_booking_details.html" %}
+{% if not is_owner %}
+{% if refund_amount %}
+<p>A refund of <strong>{{ refund_amount }}</strong> has been initiated. It usually reaches your account within 5-7 business days.</p>
+{% else %}
+<p class="muted">No refund applies to this cancellation.</p>
+{% endif %}
+{% endif %}
+{% include "_booking_link.html" %}
+{% endblock %}

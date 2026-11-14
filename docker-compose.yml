@@ -1,0 +1,66 @@
+# Full stack: docker compose up -d --build
+#   web     http://localhost:3000
+#   api     http://localhost:8000 (docs: /docs)
+#   mailpit http://localhost:8025
+#   db      localhost:5433 (host 5432 is taken by a local Postgres)
+name: turfslot
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turfslot
+      POSTGRES_PASSWORD: turfslot
+      POSTGRES_DB: turfslot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turfslot -d turfslot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://turfslot:turfslot@db:5432/turfslot
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+        VITE_MAX_SLOTS_PER_BOOKING: "4"
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:

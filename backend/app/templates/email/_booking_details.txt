@@ -1,0 +1,11 @@
+Booking ref: {{ booking_ref }}
+Turf:        {{ turf_name }}
+{% if turf_address %}
+Address:     {{ turf_address }}
+{% endif %}
+Starts:      {{ start_local }}
+Ends:        {{ end_local }}
+Amount:      {{ amount }}
+{% if refund_amount %}
+Refund:      {{ refund_amount }}
+{% endif %}

@@ -1,0 +1,3 @@
+{% if booking_url %}
+View booking: {{ booking_url }}
+{% endif %}

@@ -1,0 +1,24 @@
+{% extends "_base.txt" %}
+{% block subject %}Booking cancelled: {{ turf_name }} ({{ booking_ref }}){% endblock %}
+{% block content %}
+Hi {{ recipient_name }},
+
+{% if is_owner %}
+A booking at {{ turf_name }} has been cancelled{% if cancelled_by %} by the {{ cancelled_by }}{% endif %}. The slot is available again.
+{% else %}
+Your booking at {{ turf_name }} has been cancelled{% if cancelled_by %} by the {{ cancelled_by }}{% endif %}.
+{% endif %}
+{% if reason %}
+Reason: {{ reason }}
+{% endif %}
+
+{% include "_booking_details.txt" %}
+{% if not is_owner %}
+{% if refund_amount %}
+A refund of {{ refund_amount }} has been initiated. It usually reaches your account within 5-7 business days.
+{% else %}
+No refund applies to this cancellation.
+{% endif %}
+{% endif %}
+{% include "_booking_link.txt" %}
+{% endblock %}
