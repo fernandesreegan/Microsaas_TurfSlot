@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     PASSWORD_RESET_EXPIRE_MINUTES: int = 60
     EMAIL_VERIFY_EXPIRE_HOURS: int = 24
+    # Google Sign-In (ID-token flow); empty disables it.
+    GOOGLE_CLIENT_ID: str = ""
 
     # Booking rules
     BOOKING_HOLD_MINUTES: int = 10

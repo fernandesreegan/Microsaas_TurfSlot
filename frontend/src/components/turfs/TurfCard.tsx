@@ -3,11 +3,11 @@ import { Link } from 'react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { GlassCard } from '@/components/ui/GlassCard'
-import { formatMoney, humanize } from '@/lib/format'
-import type { TurfRead } from '@/types'
+import { formatDistance, formatMoney, humanize } from '@/lib/format'
+import type { TurfSearchItem } from '@/types'
 
 export interface TurfCardProps {
-  turf: TurfRead
+  turf: TurfSearchItem
 }
 
 export function TurfCard({ turf }: TurfCardProps) {
@@ -25,6 +25,9 @@ export function TurfCard({ turf }: TurfCardProps) {
           <p className="flex items-center gap-1 text-sm text-muted-foreground">
             <MapPin className="size-4" aria-hidden="true" />
             {turf.city}
+            {turf.distance_km != null && (
+              <span className="ml-auto font-medium text-foreground">{formatDistance(turf.distance_km)} away</span>
+            )}
           </p>
           <div className="flex flex-wrap gap-1">
             {turf.sport_types.map((s) => (

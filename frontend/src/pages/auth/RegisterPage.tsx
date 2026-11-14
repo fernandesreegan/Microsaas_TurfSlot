@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { AnimatedInput } from '@/components/ui/AnimatedInput'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -101,6 +102,9 @@ export default function RegisterPage() {
             Sign up as {role}
           </GradientButton>
         </form>
+        <div className="mt-4">
+          <GoogleSignInButton role={role} />
+        </div>
         <p className="mt-4 text-center text-sm">
           Already have an account?{' '}
           <Link to="/login" className="text-primary hover:underline">

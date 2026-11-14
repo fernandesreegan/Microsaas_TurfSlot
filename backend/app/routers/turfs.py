@@ -14,6 +14,7 @@ from app.auth.dependencies import (
     require_verified,
 )
 from app.database import get_db
+from app.exceptions import BadRequestError
 from app.models import SportType, User, UserRole
 from app.schemas.common import Page, PaginationParams
 from app.schemas.turf import (
@@ -23,6 +24,7 @@ from app.schemas.turf import (
     TurfCreate,
     TurfDetail,
     TurfRead,
+    TurfSearchItem,
     TurfUpdate,
 )
 from app.services import turf_service
@@ -30,7 +32,7 @@ from app.services import turf_service
 router = APIRouter(prefix="/turfs", tags=["turfs"])
 
 
-@router.get("", response_model=Page[TurfRead])
+@router.get("", response_model=Page[TurfSearchItem])
 async def search_turfs(
     city: str | None = Query(None, max_length=100, description="City (case-insensitive)"),
     sport: SportType | None = Query(None, description="Sport the turf must support"),
@@ -38,15 +40,28 @@ async def search_turfs(
     date_: date | None = Query(
         None, alias="date", description="Turf-local date with at least one available slot"
     ),
+    lat: float | None = Query(None, ge=-90, le=90, description="Search-center latitude"),
+    lng: float | None = Query(None, ge=-180, le=180, description="Search-center longitude"),
+    radius_km: float = Query(15, ge=1, le=100, description="Search radius (with lat/lng)"),
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
-) -> Page[TurfRead]:
-    """Search active turfs by city, sport, name and (best-effort) availability date."""
-    filters = turf_service.TurfSearch(city=city, sport=sport, q=q, local_date=date_)
-    items, total = turf_service.search_turfs(db, filters, pagination.offset, pagination.limit)
-    return Page[TurfRead].create(
-        [TurfRead.model_validate(turf) for turf in items], total, pagination
+) -> Page[TurfSearchItem]:
+    """Search active turfs by city, sport, name, location and availability date.
+
+    With ``lat`` + ``lng`` only turfs within ``radius_km`` are returned, nearest first,
+    each with ``distance_km``.
+    """
+    if (lat is None) != (lng is None):
+        raise BadRequestError("lat and lng must be given together", code="INVALID_LOCATION")
+    filters = turf_service.TurfSearch(
+        city=city, sport=sport, q=q, local_date=date_, lat=lat, lng=lng, radius_km=radius_km
     )
+    hits, total = turf_service.search_turfs(db, filters, pagination.offset, pagination.limit)
+    items = [
+        TurfSearchItem.model_validate(turf).model_copy(update={"distance_km": distance})
+        for turf, distance in hits
+    ]
+    return Page[TurfSearchItem].create(items, total, pagination)
 
 
 @router.post("", response_model=TurfRead, status_code=status.HTTP_201_CREATED)

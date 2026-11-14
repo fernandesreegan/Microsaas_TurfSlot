@@ -147,3 +147,16 @@ class MessageResponse(BaseModel):
     """Simple acknowledgement body."""
 
     message: str
+
+
+class GoogleLoginRequest(BaseModel):
+    """``POST /auth/google`` body: a Google Identity Services ID token (``credential``)."""
+
+    credential: str = Field(min_length=1, max_length=4096)
+    role: Literal["player", "owner"] = "player"
+
+
+class AuthConfig(BaseModel):
+    """Public auth configuration discovered by the frontend at runtime."""
+
+    google_client_id: str | None

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { env } from '@/lib/env'
-import { formatInTurfTz, formatMoney, humanize, todayInTz } from '@/lib/format'
+import { formatDistance, formatInTurfTz, formatMoney, humanize, todayInTz } from '@/lib/format'
 
 describe('formatMoney', () => {
   it('converts minor units to major units', () => {
@@ -34,5 +34,14 @@ describe('helpers', () => {
   it('reads env with defaults', () => {
     expect(env.apiBaseUrl).toBe('http://localhost:8000/api/v1')
     expect(env.maxSlotsPerBooking).toBe(4)
+  })
+})
+
+describe('formatDistance', () => {
+  it('formats metres below 1 km and km above', () => {
+    expect(formatDistance(0.004)).toBe('10 m')
+    expect(formatDistance(0.853)).toBe('850 m')
+    expect(formatDistance(2.43)).toBe('2.4 km')
+    expect(formatDistance(12.6)).toBe('13 km')
   })
 })

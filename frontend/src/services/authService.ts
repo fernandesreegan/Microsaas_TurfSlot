@@ -1,6 +1,8 @@
 import type {
+  AuthConfig,
   ChangePasswordRequest,
   ForgotPasswordRequest,
+  GoogleLoginRequest,
   LoginRequest,
   MessageResponse,
   RegisterRequest,
@@ -19,6 +21,20 @@ export const authService = {
   async login(body: LoginRequest): Promise<TokenPair> {
     const { data } = await api.post<TokenPair>('/auth/login', body)
     tokenStorage.setTokens(data)
+    return data
+  },
+
+  /** POST /auth/google -> TokenPair (tokens are persisted). */
+  async googleLogin(credential: string, role?: GoogleLoginRequest['role']): Promise<TokenPair> {
+    const body: GoogleLoginRequest = role ? { credential, role } : { credential }
+    const { data } = await api.post<TokenPair>('/auth/google', body)
+    tokenStorage.setTokens(data)
+    return data
+  },
+
+  /** GET /auth/config (public runtime auth configuration). */
+  async getConfig(): Promise<AuthConfig> {
+    const { data } = await api.get<AuthConfig>('/auth/config')
     return data
   },
 

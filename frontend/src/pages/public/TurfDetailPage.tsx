@@ -1,9 +1,10 @@
-import { Clock, MapPin } from 'lucide-react'
+import { Clock, ExternalLink, MapPin } from 'lucide-react'
 import { useParams } from 'react-router'
 
 import { ErrorState } from '@/components/common/ErrorState'
 import { PageSkeleton } from '@/components/common/LoadingSpinner'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { TurfMap } from '@/components/map/TurfMap'
 import { SlotPicker } from '@/components/slots/SlotPicker'
 import { Badge } from '@/components/ui/badge'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -68,6 +69,20 @@ export default function TurfDetailPage() {
               </div>
             )}
           </GlassCard>
+          {turf.latitude != null && turf.longitude != null && (
+            <GlassCard hoverable={false} className="space-y-3">
+              <TurfMap turfs={[turf]} className="h-56" singleZoom={15} />
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${turf.latitude},${turf.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                Open in Google Maps
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            </GlassCard>
+          )}
         </div>
         <GlassCard hoverable={false} className="lg:col-span-2">
           <h2 className="mb-4 text-xl font-semibold">Pick your slots</h2>

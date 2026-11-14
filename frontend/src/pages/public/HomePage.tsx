@@ -2,24 +2,33 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { LocationSearchInput } from '@/components/map/LocationSearchInput'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientButton } from '@/components/ui/GradientButton'
-import { Input } from '@/components/ui/input'
 import { humanize } from '@/lib/format'
 import { nativeFieldClass } from '@/lib/toastError'
+import type { GeocodeResult } from '@/services/geocodeService'
 import { SPORT_TYPES } from '@/types'
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const [city, setCity] = useState('')
   const [sport, setSport] = useState('')
+
+  const search = (place: GeocodeResult | null): void => {
+    const params = new URLSearchParams()
+    if (place) {
+      params.set('lat', place.lat.toFixed(6))
+      params.set('lng', place.lng.toFixed(6))
+      params.set('label', place.label)
+      params.set('radius', '15')
+    }
+    if (sport) params.set('sport', sport)
+    void navigate(`/turfs?${params.toString()}`)
+  }
 
   const onSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault()
-    const params = new URLSearchParams()
-    if (city.trim()) params.set('city', city.trim())
-    if (sport) params.set('sport', sport)
-    void navigate(`/turfs?${params.toString()}`)
+    search(null)
   }
 
   return (
@@ -32,8 +41,8 @@ export default function HomePage() {
           Real-time availability and instant confirmation for football, cricket, badminton and more.
         </p>
         <GlassCard hoverable={false}>
+          <LocationSearchInput onSelect={search} className="mb-3 text-left" />
           <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
-            <Input placeholder="City (e.g. Bengaluru)" value={city} onChange={(e) => setCity(e.target.value)} aria-label="City" />
             <select
               className={nativeFieldClass}
               value={sport}
@@ -48,7 +57,7 @@ export default function HomePage() {
               ))}
             </select>
             <GradientButton type="submit" size="default">
-              Search
+              Browse all turfs
             </GradientButton>
           </form>
         </GlassCard>

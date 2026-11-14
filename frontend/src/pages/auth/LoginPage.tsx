@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { AnimatedInput } from '@/components/ui/AnimatedInput'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -55,6 +56,9 @@ export default function LoginPage() {
             Log in
           </GradientButton>
         </form>
+        <div className="mt-4">
+          <GoogleSignInButton />
+        </div>
         <div className="mt-4 flex justify-between text-sm">
           <Link to="/forgot-password" className="text-primary hover:underline">
             Forgot password?

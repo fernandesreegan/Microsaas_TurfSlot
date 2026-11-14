@@ -13,6 +13,9 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -25,7 +28,13 @@ from app.auth.security import (
     verify_password,
 )
 from app.config import settings
-from app.exceptions import BadRequestError, ConflictError, ForbiddenError, UnauthorizedError
+from app.exceptions import (
+    AppError,
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    UnauthorizedError,
+)
 from app.models import EmailVerificationToken, PasswordResetToken, RefreshToken, User, UserRole
 from app.schemas.auth import RegisterRequest, TokenPair
 from app.schemas.user import UserUpdate
@@ -125,6 +134,81 @@ def authenticate(db: Session, email: str, password: str) -> User:
     if not user.is_active:
         raise ForbiddenError("Account is deactivated", code="ACCOUNT_INACTIVE")
     return user
+
+
+# ---------------------------------------------------------------------------
+# Google Sign-In
+# ---------------------------------------------------------------------------
+
+GOOGLE_ISSUERS = frozenset({"accounts.google.com", "https://accounts.google.com"})
+
+
+def _verify_google_credential(credential: str) -> dict[str, object]:
+    """Verify a Google ID token and return its claims.
+
+    Raises:
+        AppError: 503 ``GOOGLE_AUTH_DISABLED`` when ``GOOGLE_CLIENT_ID`` is not configured.
+        UnauthorizedError: 401 ``INVALID_GOOGLE_TOKEN`` for invalid/unverified tokens.
+    """
+    if not settings.GOOGLE_CLIENT_ID.strip():
+        raise AppError(503, "Google sign-in is not configured", code="GOOGLE_AUTH_DISABLED")
+    try:
+        claims = google_id_token.verify_oauth2_token(
+            credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID.strip()
+        )
+    except (ValueError, GoogleAuthError) as exc:
+        logger.info("Rejected Google ID token: %s", exc)
+        raise UnauthorizedError("Invalid Google credential", code="INVALID_GOOGLE_TOKEN") from exc
+    if (
+        claims.get("iss") not in GOOGLE_ISSUERS
+        or claims.get("email_verified") is not True
+        or not isinstance(claims.get("email"), str)
+    ):
+        raise UnauthorizedError("Invalid Google credential", code="INVALID_GOOGLE_TOKEN")
+    return dict(claims)
+
+
+def google_login(db: Session, credential: str, role: str = "player") -> TokenPair:
+    """Sign in (or sign up) with a Google ID token and return a token pair.
+
+    New users are created verified with an unusable random password (they can set one via
+    forgot-password). Existing users are marked verified since Google proved the email.
+
+    Raises:
+        AppError: 503 ``GOOGLE_AUTH_DISABLED``.
+        UnauthorizedError: 401 ``INVALID_GOOGLE_TOKEN``.
+        ForbiddenError: 403 ``ACCOUNT_INACTIVE``.
+    """
+    claims = _verify_google_credential(credential)
+    email = str(claims["email"]).strip().lower()
+    user = get_user_by_email(db, email)
+    if user is not None:
+        if not user.is_active:
+            raise ForbiddenError("Account is deactivated", code="ACCOUNT_INACTIVE")
+        if not user.is_verified:
+            user.is_verified = True
+        return issue_token_pair(db, user)
+
+    name = claims.get("name")
+    full_name = name.strip()[:100] if isinstance(name, str) and name.strip() else ""
+    user = User(
+        email=email,
+        hashed_password=hash_password(generate_token()),
+        full_name=full_name or email.split("@", 1)[0][:100],
+        role=UserRole.owner if role == "owner" else UserRole.player,
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(user)
+    try:
+        db.flush()
+    except IntegrityError as exc:  # concurrent sign-up with the same email
+        db.rollback()
+        raise ConflictError(
+            "An account with this email already exists", code="EMAIL_TAKEN"
+        ) from exc
+    logger.info("Registered user id=%s role=%s via Google", user.id, user.role.value)
+    return issue_token_pair(db, user)
 
 
 def _new_refresh_token(db: Session, user_id: int) -> str:

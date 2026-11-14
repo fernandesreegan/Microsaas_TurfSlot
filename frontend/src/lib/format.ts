@@ -44,3 +44,9 @@ export function humanize(value: string): string {
     .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
     .join(' ')
 }
+
+/** "850 m" below 1 km, otherwise "2.4 km". */
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`
+  return `${km < 10 ? km.toFixed(1) : Math.round(km)} km`
+}

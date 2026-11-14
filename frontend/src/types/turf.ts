@@ -82,8 +82,19 @@ export interface TurfDetail extends TurfRead {
   pricing_rules: PricingRuleRead[]
 }
 
+/** GET /turfs list item; `distance_km` is set only for location (lat/lng) searches. */
+export interface TurfSearchItem extends TurfRead {
+  distance_km?: number | null
+}
+
 export interface TurfSearchParams {
   city?: string
+  /** search-center latitude (requires lng) */
+  lat?: number
+  /** search-center longitude (requires lat) */
+  lng?: number
+  /** 1..100, default 15 */
+  radius_km?: number
   sport?: SportType
   q?: string
   /** turf-local YYYY-MM-DD */

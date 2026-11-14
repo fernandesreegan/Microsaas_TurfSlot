@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, Float, func, select
+from sqlalchemy import null as sa_null
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -24,6 +27,8 @@ SLUG_MAX_LENGTH = 150
 SLUG_INSERT_ATTEMPTS = 5
 # Upper bound of candidate turfs examined when filtering search results by date.
 DATE_FILTER_MAX_CANDIDATES = 1000
+EARTH_RADIUS_KM = 6371.0088
+KM_PER_DEGREE_LAT = 111.32
 
 
 # ---------------------------------------------------------------------------
@@ -180,17 +185,44 @@ def list_owner_turfs(db: Session, owner: User) -> Sequence[Turf]:
 
 @dataclass(frozen=True)
 class TurfSearch:
-    """Search filters for the public turf listing."""
+    """Search filters for the public turf listing.
+
+    When ``lat``/``lng`` are both given, only turfs with coordinates within
+    ``radius_km`` are returned, nearest first.
+    """
 
     city: str | None = None
     sport: SportType | None = None
     q: str | None = None
     local_date: date | None = None
+    lat: float | None = None
+    lng: float | None = None
+    radius_km: float = 15.0
+
+    @property
+    def is_geo(self) -> bool:
+        """True when a location (lat + lng) search was requested."""
+        return self.lat is not None and self.lng is not None
+
+
+SearchHit = tuple[Turf, float | None]
+"""A search result: the turf and its distance in km (None for non-geo searches)."""
 
 
 def _escape_like(value: str) -> str:
     """Escape LIKE wildcards so user input matches literally."""
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _distance_km_expr(lat: float, lng: float) -> ColumnElement[float]:
+    """Great-circle (spherical law of cosines) distance in km from (lat, lng) to a turf."""
+    t_lat = func.radians(Turf.latitude.cast(Float))
+    t_lng = func.radians(Turf.longitude.cast(Float))
+    cos_angle = func.cos(math.radians(lat)) * func.cos(t_lat) * func.cos(
+        t_lng - math.radians(lng)
+    ) + func.sin(math.radians(lat)) * func.sin(t_lat)
+    clamped = func.least(1.0, func.greatest(-1.0, cos_angle))
+    return (EARTH_RADIUS_KM * func.acos(clamped)).label("distance_km")
 
 
 def search_turfs(
@@ -199,32 +231,77 @@ def search_turfs(
     offset: int,
     limit: int,
     now_utc: datetime | None = None,
-) -> tuple[Sequence[Turf], int]:
+) -> tuple[list[SearchHit], int]:
     """Search active turfs and return ``(page_items, total)``.
 
     With ``filters.local_date`` only turfs having at least one available slot on that
     turf-local date are returned (best-effort; at most
     ``DATE_FILTER_MAX_CANDIDATES`` candidates are examined).
+
+    With ``filters.lat``/``filters.lng`` only turfs with coordinates within
+    ``filters.radius_km`` are returned, ordered by distance (bounding-box prefilter on
+    the coordinate columns, then the exact great-circle distance).
     """
-    stmt = select(Turf).where(Turf.is_active.is_(True))
+    conditions: list[ColumnElement[bool]] = [Turf.is_active.is_(True)]
     if filters.city and filters.city.strip():
-        stmt = stmt.where(Turf.city == normalize_city(filters.city))
+        conditions.append(Turf.city == normalize_city(filters.city))
     if filters.sport is not None:
-        stmt = stmt.where(Turf.sport_types.contains([filters.sport]))
+        conditions.append(Turf.sport_types.contains([filters.sport]))
     if filters.q and filters.q.strip():
-        stmt = stmt.where(Turf.name.ilike(f"%{_escape_like(filters.q.strip())}%", escape="\\"))
-    stmt = stmt.order_by(Turf.name, Turf.id)
+        conditions.append(
+            Turf.name.ilike(f"%{_escape_like(filters.q.strip())}%", escape="\\")
+        )
+
+    if filters.lat is not None and filters.lng is not None:
+        lat, lng, radius = filters.lat, filters.lng, filters.radius_km
+        distance = _distance_km_expr(lat, lng)
+        dlat = radius / KM_PER_DEGREE_LAT
+        cos_lat = math.cos(math.radians(lat))
+        dlng = 180.0 if cos_lat < 1e-6 else min(180.0, radius / (KM_PER_DEGREE_LAT * cos_lat))
+        conditions += [
+            Turf.latitude.is_not(None),
+            Turf.longitude.is_not(None),
+            Turf.latitude.between(lat - dlat, lat + dlat),
+        ]
+        if dlng < 180.0:
+            lo, hi = lng - dlng, lng + dlng
+            if lo < -180.0:
+                conditions.append((Turf.longitude >= lo + 360.0) | (Turf.longitude <= hi))
+            elif hi > 180.0:
+                conditions.append((Turf.longitude >= lo) | (Turf.longitude <= hi - 360.0))
+            else:
+                conditions.append(Turf.longitude.between(lo, hi))
+        inner = select(Turf.id.label("turf_id"), distance).where(*conditions).subquery()
+        stmt = (
+            select(Turf, inner.c.distance_km)
+            .join(inner, inner.c.turf_id == Turf.id)
+            .where(inner.c.distance_km <= radius)
+            .order_by(inner.c.distance_km, Turf.name, Turf.id)
+        )
+    else:
+        stmt = (
+            select(Turf, sa_null().cast(Float).label("distance_km"))
+            .where(*conditions)
+            .order_by(Turf.name, Turf.id)
+        )
+
+    def _hits(rows: Sequence[Any]) -> list[SearchHit]:
+        hits: list[SearchHit] = []
+        for turf, dist in rows:
+            hits.append((turf, None if dist is None else round(float(dist), 3)))
+        return hits
 
     if filters.local_date is None:
         total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
-        items = db.scalars(stmt.offset(offset).limit(limit)).all()
-        return items, total
+        return _hits(db.execute(stmt.offset(offset).limit(limit)).all()), total
 
-    candidates = db.scalars(stmt.limit(DATE_FILTER_MAX_CANDIDATES)).all()
+    candidates = _hits(db.execute(stmt.limit(DATE_FILTER_MAX_CANDIDATES)).all())
     if len(candidates) == DATE_FILTER_MAX_CANDIDATES:
         logger.warning("Date-filtered search truncated at %d candidates", len(candidates))
-    available_ids = turf_ids_with_availability(db, candidates, filters.local_date, now_utc)
-    matching = [turf for turf in candidates if turf.id in available_ids]
+    available_ids = turf_ids_with_availability(
+        db, [turf for turf, _ in candidates], filters.local_date, now_utc
+    )
+    matching = [hit for hit in candidates if hit[0].id in available_ids]
     return matching[offset : offset + limit], len(matching)
 
 

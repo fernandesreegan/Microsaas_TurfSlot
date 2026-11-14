@@ -1,11 +1,11 @@
-import type { DaySlots, Page, TurfCreate, TurfDetail, TurfRead, TurfSearchParams, TurfUpdate } from '@/types'
+import type { DaySlots, Page, TurfCreate, TurfDetail, TurfRead, TurfSearchItem, TurfSearchParams, TurfUpdate } from '@/types'
 
 import { api } from './api'
 
 export const turfService = {
   /** GET /turfs */
-  async search(params: TurfSearchParams): Promise<Page<TurfRead>> {
-    const { data } = await api.get<Page<TurfRead>>('/turfs', { params })
+  async search(params: TurfSearchParams): Promise<Page<TurfSearchItem>> {
+    const { data } = await api.get<Page<TurfSearchItem>>('/turfs', { params })
     return data
   },
 

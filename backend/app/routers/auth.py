@@ -4,12 +4,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, stat
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.rate_limit import limiter
 from app.schemas.auth import (
+    AuthConfig,
     ChangePasswordRequest,
     ForgotPasswordRequest,
+    GoogleLoginRequest,
     LoginRequest,
     LogoutRequest,
     MessageResponse,
@@ -74,6 +77,30 @@ async def login(request: Request, body: LoginRequest, db: Session = Depends(get_
     """Exchange email + password (JSON body) for an access/refresh token pair."""
     user = auth_service.authenticate(db, body.email, body.password)
     return auth_service.issue_token_pair(db, user)
+
+
+@router.post(
+    "/google",
+    response_model=TokenPair,
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
+)
+@limiter.limit("10/minute")
+async def google_login(
+    request: Request, body: GoogleLoginRequest, db: Session = Depends(get_db)
+) -> TokenPair:
+    """Sign in or sign up with a Google Identity Services ID token."""
+    return auth_service.google_login(db, body.credential, body.role)
+
+
+@router.get("/config", response_model=AuthConfig)
+async def auth_config() -> AuthConfig:
+    """Public auth configuration (e.g. the Google OAuth client id, or null if disabled)."""
+    client_id = settings.GOOGLE_CLIENT_ID.strip()
+    return AuthConfig(google_client_id=client_id or None)
 
 
 @router.post(

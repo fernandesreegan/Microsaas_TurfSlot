@@ -209,6 +209,12 @@ class TurfRead(BaseModel):
     owner_id: int
 
 
+class TurfSearchItem(TurfRead):
+    """A turf in search results; ``distance_km`` is set only for location searches."""
+
+    distance_km: float | None = None
+
+
 # ---------------------------------------------------------------------------
 # Pricing rules
 # ---------------------------------------------------------------------------

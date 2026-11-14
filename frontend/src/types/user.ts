@@ -66,3 +66,14 @@ export interface MessageResponse {
   message?: string
   detail?: string
 }
+
+/** GET /auth/config — public runtime auth configuration. */
+export interface AuthConfig {
+  google_client_id: string | null
+}
+
+/** POST /auth/google body. */
+export interface GoogleLoginRequest {
+  credential: string
+  role?: 'player' | 'owner'
+}

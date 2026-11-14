@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useCallback, useEffect } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -8,6 +8,8 @@ import { z } from 'zod'
 import { ErrorState } from '@/components/common/ErrorState'
 import { PageSkeleton } from '@/components/common/LoadingSpinner'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { LocationPicker } from '@/components/map/LocationPicker'
+import { LocationSearchInput } from '@/components/map/LocationSearchInput'
 import { AnimatedInput } from '@/components/ui/AnimatedInput'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientButton } from '@/components/ui/GradientButton'
@@ -16,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useSaveTurf, useTurf } from '@/hooks/useTurfs'
 import { formatTimeHHMM, humanize } from '@/lib/format'
 import { nativeFieldClass, toastApiError } from '@/lib/toastError'
+import type { GeocodeResult, LatLng } from '@/services/geocodeService'
 import { SPORT_TYPES, type SlotDurationMinutes, type SportType, type TurfCreate, type TurfRead } from '@/types'
 
 const TIMEZONES = [
@@ -32,7 +35,7 @@ const TIMEZONES = [
 const DURATIONS: SlotDurationMinutes[] = [30, 60, 90]
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 
-const schema = z
+const baseSchema = z
   .object({
     name: z.string().trim().min(2, 'Name is required').max(120),
     description: z.string().max(2000),
@@ -47,10 +50,19 @@ const schema = z
     closing_time: z.string().regex(HHMM, 'Use HH:MM'),
     base_price: z.string().refine((v) => Number(v) > 0, 'Enter a price greater than 0'),
     currency: z.string().trim().length(3, '3-letter code'),
+    latitude: z.number().min(-90).max(90).nullable(),
+    longitude: z.number().min(-180).max(180).nullable(),
   })
   .refine((v) => v.closing_time > v.opening_time, { path: ['closing_time'], message: 'Must be after opening time' })
 
-type TurfFormValues = z.infer<typeof schema>
+/** Edits may keep a turf without coordinates; new turfs must be pinned so they show up in map search. */
+const editSchema = baseSchema
+const createSchema = baseSchema.refine((v) => v.latitude !== null && v.longitude !== null, {
+  path: ['latitude'],
+  message: 'Drop a pin on the map so players can find your turf',
+})
+
+type TurfFormValues = z.infer<typeof baseSchema>
 
 const EMPTY: TurfFormValues = {
   name: '',
@@ -66,6 +78,8 @@ const EMPTY: TurfFormValues = {
   closing_time: '23:00',
   base_price: '',
   currency: 'INR',
+  latitude: null,
+  longitude: null,
 }
 
 function toFormValues(t: TurfRead): TurfFormValues {
@@ -83,6 +97,8 @@ function toFormValues(t: TurfRead): TurfFormValues {
     closing_time: formatTimeHHMM(t.closing_time),
     base_price: String(t.base_price / 100),
     currency: t.currency,
+    latitude: t.latitude != null ? Number(t.latitude) : null,
+    longitude: t.longitude != null ? Number(t.longitude) : null,
   }
 }
 
@@ -92,8 +108,8 @@ function toPayload(v: TurfFormValues): TurfCreate {
     description: v.description.trim(),
     address: v.address.trim(),
     city: v.city.trim(),
-    latitude: null,
-    longitude: null,
+    latitude: v.latitude,
+    longitude: v.longitude,
     timezone: v.timezone,
     sport_types: v.sport_types,
     amenities: v.amenities
@@ -123,8 +139,22 @@ export default function TurfFormPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    control,
     formState: { errors },
-  } = useForm<TurfFormValues>({ resolver: zodResolver(schema), defaultValues: EMPTY })
+  } = useForm<TurfFormValues>({ resolver: zodResolver(isEdit ? editSchema : createSchema), defaultValues: EMPTY })
+
+  const latitude = useWatch({ control, name: 'latitude' })
+  const longitude = useWatch({ control, name: 'longitude' })
+  const pin: LatLng | null = latitude !== null && longitude !== null ? { lat: latitude, lng: longitude } : null
+  const setPin = useCallback(
+    (value: LatLng): void => {
+      setValue('latitude', value.lat, { shouldDirty: true, shouldValidate: true })
+      setValue('longitude', value.lng, { shouldDirty: true, shouldValidate: true })
+    },
+    [setValue],
+  )
+  const onPlace = (place: GeocodeResult): void => setPin({ lat: place.lat, lng: place.lng })
 
   useEffect(() => {
     if (turfQuery.data) reset(toFormValues(turfQuery.data))
@@ -164,6 +194,23 @@ export default function TurfFormPage() {
             {...register('address')}
             error={errors.address?.message}
           />
+          <fieldset className="space-y-2 sm:col-span-2">
+            <legend className="text-sm font-medium">Location on map{isEdit ? '' : ' *'}</legend>
+            <p className="text-sm text-muted-foreground">
+              Search for the address, then click the map or drag the pin to the exact entrance. Turfs with a pin appear
+              in players&apos; nearby search.
+            </p>
+            <LocationSearchInput onSelect={onPlace} placeholder="Jump to an address or landmark" />
+            <LocationPicker value={pin} onChange={setPin} className="h-[320px]" />
+            {pin ? (
+              <p className="text-xs text-muted-foreground">
+                Pinned at {pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">No pin yet.</p>
+            )}
+            {errors.latitude && <p className="text-sm text-destructive">{errors.latitude.message}</p>}
+          </fieldset>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" rows={3} {...register('description')} />
