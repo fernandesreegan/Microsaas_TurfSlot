@@ -54,7 +54,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${PUBLIC_API_URL-http://localhost:8000}
         VITE_MAX_SLOTS_PER_BOOKING: "4"
     restart: unless-stopped
     depends_on:
