@@ -182,7 +182,7 @@ export default function TurfSearchPage() {
       {center ? (
         <div className="flex flex-col gap-6 lg:flex-row-reverse">
           <div className="lg:sticky lg:top-20 lg:w-1/2 lg:self-start">
-            <TurfMap turfs={items} center={center} centerLabel={label || 'Search location'} className="h-[320px] lg:h-[560px]" />
+            <TurfMap turfs={items} center={center} centerLabel={label || 'Search location'} radiusKm={center ? radius : undefined} className="h-[320px] lg:h-[560px]" />
           </div>
           <div className="lg:w-1/2">{results}</div>
         </div>

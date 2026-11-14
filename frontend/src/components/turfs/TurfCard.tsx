@@ -2,6 +2,7 @@ import { MapPin } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { formatDistance, formatMoney, humanize } from '@/lib/format'
 import type { TurfSearchItem } from '@/types'
@@ -36,9 +37,12 @@ export function TurfCard({ turf }: TurfCardProps) {
               </Badge>
             ))}
           </div>
-          <p className="text-sm font-medium">
-            From {formatMoney(turf.base_price, turf.currency)} / {turf.slot_duration_minutes} min
-          </p>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-sm font-medium">
+              From {formatMoney(turf.base_price, turf.currency)} / {turf.slot_duration_minutes} min
+            </p>
+            <span className={buttonVariants({ size: 'sm' })}>Book now</span>
+          </div>
         </div>
       </GlassCard>
     </Link>

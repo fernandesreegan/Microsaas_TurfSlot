@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router'
 
 import { formatDistance, formatMoney } from '@/lib/format'
@@ -16,6 +16,8 @@ export interface TurfMapProps {
   center?: LatLng | null
   centerLabel?: string
   className?: string
+  /** Search radius in km; drawn as a circle around `center` and used to frame the map. */
+  radiusKm?: number
   /** Zoom used when there is only one point to show. */
   singleZoom?: number
 }
@@ -25,10 +27,24 @@ interface PlacedTurf {
   position: [number, number]
 }
 
-function FitBounds({ points, singleZoom }: { points: [number, number][]; singleZoom: number }) {
+function FitBounds({
+  points,
+  singleZoom,
+  circle,
+}: {
+  points: [number, number][]
+  singleZoom: number
+  circle: { center: [number, number]; radiusKm: number } | null
+}) {
   const map = useMap()
-  const key = points.map((p) => p.join(',')).join(';')
+  const key = points.map((p) => p.join(',')).join(';') + (circle ? `|${circle.center.join(',')}:${circle.radiusKm}` : '')
   useEffect(() => {
+    if (circle) {
+      const bounds = L.latLng(circle.center).toBounds(circle.radiusKm * 2000)
+      points.forEach((p) => bounds.extend(p))
+      map.fitBounds(bounds, { padding: [24, 24] })
+      return
+    }
     if (points.length === 0) return
     if (points.length === 1) {
       map.setView(points[0], singleZoom)
@@ -41,7 +57,7 @@ function FitBounds({ points, singleZoom }: { points: [number, number][]; singleZ
 }
 
 /** OpenStreetMap map with a marker per turf (that has coordinates). */
-export function TurfMap({ turfs, center, centerLabel, className, singleZoom = 14 }: TurfMapProps) {
+export function TurfMap({ turfs, center, centerLabel, className, radiusKm, singleZoom = 14 }: TurfMapProps) {
   const placed: PlacedTurf[] = turfs
     .filter((t) => t.latitude != null && t.longitude != null)
     .map((t) => ({ turf: t, position: [Number(t.latitude), Number(t.longitude)] }))
@@ -53,7 +69,18 @@ export function TurfMap({ turfs, center, centerLabel, className, singleZoom = 14
     <div className={cn('isolate overflow-hidden rounded-xl border', className ?? 'h-[420px]')}>
       <MapContainer center={initial} zoom={points.length ? singleZoom : DEFAULT_ZOOM} scrollWheelZoom className="size-full">
         <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
-        <FitBounds points={points} singleZoom={singleZoom} />
+        <FitBounds
+          points={points}
+          singleZoom={singleZoom}
+          circle={center && radiusKm ? { center: [center.lat, center.lng], radiusKm } : null}
+        />
+        {center && radiusKm ? (
+          <Circle
+            center={[center.lat, center.lng]}
+            radius={radiusKm * 1000}
+            pathOptions={{ color: '#16a34a', weight: 1.5, fillOpacity: 0.08 }}
+          />
+        ) : null}
         {center && (
           <Marker position={[center.lat, center.lng]} icon={centerIcon}>
             <Popup>{centerLabel ?? 'Search location'}</Popup>
@@ -69,7 +96,7 @@ export function TurfMap({ turfs, center, centerLabel, className, singleZoom = 14
                   {turf.distance_km != null && ` · ${formatDistance(turf.distance_km)} away`}
                 </p>
                 <Link to={`/turfs/${turf.slug}`} className="font-medium text-primary underline">
-                  View turf
+                  Book a slot
                 </Link>
               </div>
             </Popup>
