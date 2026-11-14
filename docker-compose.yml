@@ -48,7 +48,7 @@ services:
       mailpit:
         condition: service_started
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
 
   web:
     build:
